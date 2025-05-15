@@ -1,0 +1,10 @@
+{% extends "base.html"%}
+{% block content %}
+<div class="jumbotron">
+{% if error %}
+<p>{{ error }}</p>
+{% else %}
+<p>Sorry, we got an error trying to load your content.</p>
+{% endif %}
+</div>
+{% endblock %}

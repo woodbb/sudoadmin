@@ -1,0 +1,127 @@
+
+# example.com
+dn: dc=example,dc=com
+objectClass: dcObject
+objectClass: organization
+dc: example
+o: example
+
+# users, example.com
+dn: ou=users,dc=example,dc=com
+objectClass: organizationalUnit
+ou: users
+
+# user01, users, example.com
+dn: cn=user01,ou=users,dc=example,dc=com
+cn: User1
+cn: user01
+sn: Bar1
+objectClass: inetOrgPerson
+objectClass: posixAccount
+objectClass: shadowAccount
+userPassword:: Yml0bmFtaTE=
+uid: user01
+uidNumber: 1000
+gidNumber: 1000
+homeDirectory: /home/user01
+
+# user02, users, example.com
+dn: cn=user02,ou=users,dc=example,dc=com
+cn: User2
+cn: user02
+sn: Bar2
+objectClass: inetOrgPerson
+objectClass: posixAccount
+objectClass: shadowAccount
+userPassword:: Yml0bmFtaTI=
+uid: user02
+uidNumber: 1001
+gidNumber: 1001
+homeDirectory: /home/user02
+
+# readers, users, example.com
+dn: cn=readers,ou=users,dc=example,dc=com
+cn: readers
+objectClass: groupOfNames
+member: cn=user01,ou=users,dc=example,dc=com
+member: cn=user02,ou=users,dc=example,dc=com
+
+dn: ou=sudo,dc=example,dc=com
+objectClass: organizationalUnit
+objectClass: top
+ou: sudo
+
+dn: cn=Linux_Admins,ou=sudo,dc=example,dc=com
+description: Linux Admins
+objectClass: sudoRole
+objectClass: top
+cn: Linux_Admins
+sudoCommand: ALL
+sudoHost: ALL
+sudoRunAs: ALL
+sudoUser: %testgroup1
+sudoOption: !Authenticate
+
+dn: cn=DBA_Admins,ou=sudo,dc=example,dc=com
+description: DBA Admins
+objectClass: sudoRole
+objectClass: top
+cn: DBA_Admins
+sudoCommand: stop database
+sudoCommand: start database
+sudoCommand: reload database
+sudoHost: host1
+sudoRunAs: ALL
+sudoUser: dbaadmin1
+sudoUser: dbaadmin2
+sudoUser: dbaadmin3
+sudoUser: dbaadmin4
+sudoOption: !Authenticate
+
+dn: cn=Storage_Admins,ou=sudo,dc=example,dc=com
+description: Storage Admins
+objectClass: sudoRole
+objectClass: top
+cn: Storage_Admins
+sudoCommand: mount /a
+sudoCommand: umount *
+sudoCommand: rm /mnt/*
+sudoCommand: ls -ls /mnt/*
+sudoCommand: cat /etc/fstam
+sudoHost: host2
+sudoHost: host3
+sudoHost: host4
+sudoHost: host49
+sudoRunAs: ALL
+sudoUser: %stoageadminteam
+sudoUser: chuck
+sudoUser: bill
+sudoUser: %dbaops
+sudoOption: !Authenticate
+
+dn: cn=EpicAdmins,ou=sudo,dc=example,dc=com
+description: Epic Admins
+objectClass: sudoRole
+objectClass: top
+cn: Epic_Admins
+sudoCommand: ALL
+sudoHost: host2
+sudoRunAs: ALL
+sudoUser: matt
+sudoOption: !Authenticate
+
+dn: cn=Automation_Team,ou=sudo,dc=example,dc=com
+description: Automation Team
+objectClass: sudoRole
+objectClass: top
+cn: Automation_Teal
+sudoCommand: ALL
+sudoHost: host11
+sudoHost: host3
+sudoHost: host4
+sudoHost: host44
+sudoRunAs: ALL
+sudoUser: %MoM
+sudoUser: alvin
+sudoUser: jon
+sudoOption: !Authenticate

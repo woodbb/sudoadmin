@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+{% block content %}
+
+
+<br>
+<div class="custom-container">
+    <center>
+    <h4>
+        <strong>
+            Sudo Policy Object:
+        </strong>
+        {{ description }}
+    </h4>
+    </center>
+<br>
+
+<form class="d-flex" role="edit" method="POST" action="/edit/{{ cn }}" >
+{{ editform.hidden_tag() }}
+
+
+<input type=hidden name=dn value="{{ cn }}">
+
+<table class="table table-borderless table-hover">
+    <thead>
+      <tr class="view-table">
+        <th scope="col">Users / %Groups The Policy Applies To</th>
+      </tr>
+    </thead>
+    <tbody>
+        <div class="input_fields_wrap_user">
+            {% for user in userlist %}
+            <tr><td>
+                <div class="input-group">
+                    <span class="input-group-text" id="basic-addon1">
+                    {% if user.startswith('%') %}
+                        Group
+                    {% else %}
+                        User
+                    {% endif %}
+                    </span>
+                    <input type="text" name="users[]" value="{{ user }}" class="form-control">&nbsp;
+                    <a href="#" class="remove_field_user">
+                        <button type="button" class="btn btn-danger">Remove</button>
+                    </a>
+                </div>
+            </td></tr>
+            {% endfor %}
+        </div>
+
+            <tr>
+                <td>
+                    <button class="add_field_button_user btn btn-primary">Add More Users/Groups</button>
+                </td>
+            </tr>
+        <script>
+            $(document).ready(function() {
+                var max_fields      = 1000; //maximum input boxes allowed
+                var wrapper   		= $(".input_fields_wrap_user"); //Fields wrapper
+                var add_button      = $(".add_field_button_user"); //Add button ID
+
+                var x = 1; //initlal text box count
+                $(add_button).click(function(e){ //on add input button click
+                    e.preventDefault();
+                    if(x < max_fields){ //max input box allowed
+                        x++; //text box increment
+                        $(wrapper).append('<tr><td><div class="input-group"><input type="text" name="users[]" class="form-control">&nbsp;<a href="#" class="add_field_button_user"><button type="button" class="btn btn-success">Add</button></a></div></td></tr>'); //add input box
+                    }
+                });
+
+                $(wrapper).on("click",".remove_field_user", function(e){ //user click on remove text
+                    e.preventDefault(); $(this).parent('div').remove(); x--;
+                })
+            });
+
+            </script>
+
+
+
+    </tbody>
+</table>
+
+
+
+</form>
+
+
+
+
+</center>
+
+<br><br>
+
+
+
+
+{% endblock %}

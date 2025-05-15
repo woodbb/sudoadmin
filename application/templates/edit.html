@@ -1,0 +1,290 @@
+{% extends "base.html" %}
+{% block content %}
+
+
+<br>
+<div class="custom-container">
+    <center>
+    <h3>
+        <u>
+            <strong>
+                Sudo Policy Object
+            </strong>
+        </u>:
+            {{ description }}
+    </h3>
+    </center>
+<br><br>
+</div>
+
+<form role="edit" method="POST" action="/edit_policy/{{ cn }}" >
+{{ editform.hidden_tag() }}
+
+<center>
+<input type=hidden name=cn value="{{ cn }}">
+<div class="input-group mb-2 w-75 d-flex">
+    <span class="input-group-text" id="basic-addon1">Description</span>
+    <input type="text" name=desc value="{{ description }}" class="form-control">
+</div>
+</center>
+<br>
+<!--
+    #################################################
+    ####### Users and Groups Form Elements ##########
+    #################################################
+-->
+
+<center>
+<h5>Users and Groups Policy Applies To</h5>
+<div class="input_fields_wrap_user">
+    {% for user in userlist %}
+    <div class="input-group mb-2 w-75 d-flex">
+
+        <span class="input-group-text" id="basic-addon1">
+        {% if user.startswith('%') %}
+            Group
+        {% else %}
+            User
+        {% endif %}
+        </span>
+        <input type="text" name=users[] value="{{ user }}" class="form-control">&nbsp;
+        <a href="#" class="remove_field_user">
+            <button type="button" class="btn btn-danger">Remove</button>
+        </a>
+
+    </div>
+    {% endfor %}
+</div>
+
+<script>
+    $(document).ready(function() {
+        var max_fields      = 1000; //maximum input boxes allowed
+        var wrapper   		= $(".input_fields_wrap_user"); //Fields wrapper
+        var add_button      = $(".add_field_button_user"); //Add button ID
+
+        var x = 1; //initlal text box count
+        $(add_button).click(function(e){ //on add input button click
+            e.preventDefault();
+            if(x < max_fields){ //max input box allowed
+                x++; //text box increment
+                $(wrapper).append('<div class="input-group mb-2 w-75 d-flex"><input type="text" name=users[] class="form-control">&nbsp;<a href="#" class="remove_field_user"><button type="button" class="btn btn-danger">Remove</button></a></div>'); //add input box
+            }
+        });
+
+        $(wrapper).on("click",".remove_field_user", function(e){ //user click on remove text
+            e.preventDefault(); $(this).parent('div').remove(); x--;
+        })
+    });
+
+</script>
+
+<button class="add_field_button_user btn btn-secondary">Add Users or Groups</button>
+
+</center>
+
+
+<br><br><br>
+
+<!--
+    #################################################
+    ####### Hosts Form Elements #####################
+    #################################################
+-->
+
+<center>
+    <h5>Hosts Policy Applies To</h5>
+    <div class="input_fields_wrap_host">
+        {% for host in hostlist %}
+        <div class="input-group mb-2 w-75 d-flex">
+            <input type="text" name="hosts[]" value="{{ host }}" class="form-control">&nbsp;
+            <a href="#" class="remove_field_host">
+                <button type="button" class="btn btn-danger">Remove</button>
+            </a>
+        </div>
+        {% endfor %}
+    </div>
+
+    <script>
+        $(document).ready(function() {
+            var max_fields      = 1000; //maximum input boxes allowed
+            var wrapper   		= $(".input_fields_wrap_host"); //Fields wrapper
+            var add_button      = $(".add_field_button_host"); //Add button ID
+
+            var x = 1; //initlal text box count
+            $(add_button).click(function(e){ //on add input button click
+                e.preventDefault();
+                if(x < max_fields){ //max input box allowed
+                    x++; //text box increment
+                    $(wrapper).append('<div class="input-group mb-2 w-75 d-flex"><input type="text" name="hosts[]" class="form-control">&nbsp;<a href="#" class="remove_field_host"><button type="button" class="btn btn-danger">Remove</button></a></div>'); //add input box
+                }
+            });
+
+            $(wrapper).on("click",".remove_field_host", function(e){ //user click on remove text
+                e.preventDefault(); $(this).parent('div').remove(); x--;
+            })
+        });
+
+    </script>
+
+    <button class="add_field_button_host btn btn-secondary">Add Hosts</button>
+
+    </center>
+
+<br><br><br>
+
+
+<!--
+    #################################################
+    ####### Commmands Form Elements #################
+    #################################################
+-->
+
+<center>
+    <h5>Commands Policy Allows</h5>
+    <div class="input_fields_wrap_cmd">
+        {% for cmd in cmdlist %}
+        <div class="input-group mb-2 w-75 d-flex">
+            <input type="text" name="cmds[]" value="{{ cmd }}" class="form-control">&nbsp;
+            <a href="#" class="remove_field_cmd">
+                <button type="button" class="btn btn-danger">Remove</button>
+            </a>
+
+        </div>
+        {% endfor %}
+    </div>
+
+    <script>
+        $(document).ready(function() {
+            var max_fields      = 1000; //maximum input boxes allowed
+            var wrapper   		= $(".input_fields_wrap_cmd"); //Fields wrapper
+            var add_button      = $(".add_field_button_cmd"); //Add button ID
+
+            var x = 1; //initlal text box count
+            $(add_button).click(function(e){ //on add input button click
+                e.preventDefault();
+                if(x < max_fields){ //max input box allowed
+                    x++; //text box increment
+                    $(wrapper).append('<div class="input-group mb-2 w-75 d-flex"><input type="text" name="cmds[]" class="form-control">&nbsp;<a href="#" class="remove_field_cmd"><button type="button" class="btn btn-danger">Remove</button></a></div>'); //add input box
+                }
+            });
+
+            $(wrapper).on("click",".remove_field_cmd", function(e){ //user click on remove text
+                e.preventDefault(); $(this).parent('div').remove(); x--;
+            })
+        });
+
+    </script>
+
+    <button class="add_field_button_cmd btn btn-secondary">Add Commands</button>
+
+    </center>
+
+
+<br><br><br>
+
+<!--
+    #################################################
+    ####### Options Form Elements ##########
+    #################################################
+-->
+
+<center>
+    <h5>Sudo Options</h5>
+    <div class="input_fields_wrap_option">
+        {% for option in optionlist %}
+        <div class="input-group mb-2 w-75 d-flex">
+            <input type="text" name="options[]" value="{{ option }}" class="form-control">&nbsp;
+            <a href="#" class="remove_field_option">
+                <button type="button" class="btn btn-danger">Remove</button>
+            </a>
+
+        </div>
+        {% endfor %}
+    </div>
+
+    <script>
+        $(document).ready(function() {
+            var max_fields      = 1000; //maximum input boxes allowed
+            var wrapper   		= $(".input_fields_wrap_option"); //Fields wrapper
+            var add_button      = $(".add_field_button_option"); //Add button ID
+
+            var x = 1; //initlal text box count
+            $(add_button).click(function(e){ //on add input button click
+                e.preventDefault();
+                if(x < max_fields){ //max input box allowed
+                    x++; //text box increment
+                    $(wrapper).append('<div class="input-group mb-2 w-75 d-flex"><input type="text" name="options[]" class="form-control">&nbsp;<a href="#" class="remove_field_option"><button type="button" class="btn btn-danger">Remove</button></a></div>'); //add input box
+                }
+            });
+
+            $(wrapper).on("click",".remove_field_option", function(e){ //user click on remove text
+                e.preventDefault(); $(this).parent('div').remove(); x--;
+            })
+        });
+
+    </script>
+
+    <button class="add_field_button_option btn btn-secondary">Add Options</button>
+
+
+<br><br><br>
+
+
+<!--
+    #################################################
+    ####### Runas Form Elements #####################
+    #################################################
+-->
+
+<center>
+    <h5>RunAs Options</h5>
+    <div class="input_fields_wrap_runas">
+        {% for run in runas %}
+        <div class="input-group mb-2 w-75 d-flex">
+            <input type="text" name="runas[]" value="{{ run }}" class="form-control">&nbsp;
+            <a href="#" class="remove_field_runas">
+                <button type="button" class="btn btn-danger">Remove</button>
+            </a>
+
+        </div>
+        {% endfor %}
+    </div>
+
+    <script>
+        $(document).ready(function() {
+            var max_fields      = 1000; //maximum input boxes allowed
+            var wrapper   		= $(".input_fields_wrap_runas"); //Fields wrapper
+            var add_button      = $(".add_field_button_runas"); //Add button ID
+
+            var x = 1; //initlal text box count
+            $(add_button).click(function(e){ //on add input button click
+                e.preventDefault();
+                if(x < max_fields){ //max input box allowed
+                    x++; //text box increment
+                    $(wrapper).append('<div class="input-group mb-2 w-75 d-flex"><input type="text" name="runas[]" class="form-control">&nbsp;<a href="#" class="remove_field_runas"><button type="button" class="btn btn-danger">Remove</button></a></div>'); //add input box
+                }
+            });
+
+            $(wrapper).on("click",".remove_field_runas", function(e){ //user click on remove text
+                e.preventDefault(); $(this).parent('div').remove(); x--;
+            })
+        });
+
+    </script>
+
+    <button class="add_field_button_runas btn btn-secondary">Add RunAs</button>
+
+
+
+
+
+
+    <br><br><br>
+
+<button class="btn btn-primary" type="submit" name="submit" value="submit">Submit Changes To Policy</button>
+<button class="btn btn-warning" type=button onclick="location.href='/policyinfo/{{ cn }}'">Cancel</button>
+</form>
+</center>
+<br><br>
+
+{% endblock %}

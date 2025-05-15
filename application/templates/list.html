@@ -1,0 +1,60 @@
+{% extends "base.html"%}
+{% block content %}
+
+{% if error %}
+<div class="jumbotron"></div>
+<p>{{ error }}</p>
+</div>
+{% else %}
+<br><br>
+{% if filtered %}
+<center>
+  <div class="alert alert-primary" role="alert">
+  <strong><i>Sudo policies matching filter:</i></strong> {{ filter }}
+  &nbsp;&nbsp;
+  <button type="button" class="btn btn-danger btn-sm" onclick="window.location.href='/'">Remove Filter</button>
+
+</div>
+</center>
+<br>
+{% endif %}
+<table class="table table-borderless table-striped table-hover">
+    <thead>
+      <tr>    
+        <th scope="col">Sudo Policy Objects</th>
+        <th scope="col">Hosts</th>
+        <th scope="col">Users / <font color=green>Groups</font></th>
+      </tr>
+    </thead>
+    <tbody>
+
+{% for item in data %}
+      <tr>
+        <td>
+            <a href="/policyinfo/{{ item['cn'] }}" class="text-decoration-none">
+            {{ item['description'] }}
+            </a>
+        </td>
+        <td>{{ item['hosts'] | join(", ") }}</td>
+      
+        <td>
+          {% for user in item['users'] %}
+            {%- if user.startswith('%') -%}
+            <font color="green">{{ user | replace('%','') }}</font>
+            {%- else -%}
+            {{ user }}
+            {%- endif -%}
+            {{ ", " if not loop.last }}
+          {% endfor %}
+        </td>
+      </tr>
+    
+{% endfor %}
+
+    </tbody>
+  </table>
+
+
+{% endif %}
+
+{% endblock %}

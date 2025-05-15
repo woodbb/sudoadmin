@@ -1,0 +1,117 @@
+{% extends "base.html"%}
+{% block content %}
+
+<br>
+<div class="custom-container">
+    <center>
+    <h4>
+        <strong>
+            Sudo Policy Object: 
+        </strong>
+        {{ description }}
+    </h4>
+    </center>
+<br>
+
+<table class="table table-borderless table-hover">
+    <thead>
+      <tr class="view-table">    
+        <th scope="col">Users / <font color=green>Groups</font> The Policy Applies To</th>
+      </tr>
+    </thead>
+    <tbody>
+        {% for user in userlist | sort %}
+            <tr>
+                <td>
+                    {%- if user.startswith('%') -%}
+                        <font color="green">{{ user | replace('%','') }}</font>
+                    {%- else -%}
+                        {{ user }}
+                    {%- endif -%}
+                </td>
+            </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+<br>
+
+<table class="table table-borderless table-hover">
+    <thead>
+      <tr class="view-table">    
+        <th scope="col">Hosts That The Policy Applies To</th>
+      </tr>
+    </thead>
+    <tbody>
+        {% for host in hostlist %}
+            <tr>
+                <td>
+                    {{ host }}
+                </td>
+            </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    <br>
+
+    <table class="table table-borderless table-hover">
+        <thead>
+          <tr class="view-table">    
+            <th scope="col">Commands That The Policy Allows</th>
+          </tr>
+        </thead>
+        <tbody>
+            {% for cmd in cmdlist %}
+                <tr>
+                    <td>
+                        {{ cmd }}
+                    </td>
+                </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+
+<br>
+
+<table class="table table-borderless table-hover">
+    <thead>
+      <tr class="view-table">    
+        <th scope="col">Sudo Options For The Policy </th>
+      </tr>
+    </thead>
+    <tbody>
+        {% for option in optionlist %}
+            <tr>
+                <td>
+                    {{ option }}
+                </td>
+            </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+<br>
+
+<table class="table table-borderless table-hover">
+    <thead>
+      <tr class="view-table">    
+        <th scope="col">Allow Sudo Policy To Run As</th>
+      </tr>
+    </thead>
+    <tbody>
+        {% for run in runas %}
+            <tr>
+                <td>
+                    {{ run }}
+                </td>
+            </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+
+</div>
+
+<br><br>
+{% endblock %}

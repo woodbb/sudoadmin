@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block content %}
+
+<br><br>
+
+<form role="login" method="POST" action="/login">
+
+<center>
+    <div class="input-group mb-2 w-50 d-flex">
+        <span class="input-group-text" id="basic-addon1">Login</span>
+        <input type="text" name=username class="form-control">
+    </div>
+    <div class="input-group mb-2 w-50 d-flex">
+        <span class="input-group-text" id="basic-addon1">Password</span>
+        <input type="password" name=password class="form-control">
+    </div>
+<br>
+<button class="btn btn-primary" type="submit" name="submit" value="submit">Login</button>
+</center>
+</form>
+
+
+{% endblock %}

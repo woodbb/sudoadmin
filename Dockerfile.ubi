@@ -1,0 +1,25 @@
+
+FROM registry.redhat.io/ubi9/python-39
+ENV PYTHONUNBUFFERED 1
+
+USER root
+RUN dnf clean all
+# RUN dnf-y install openldap-devel libgsasl-devel python3-pip
+RUN dnf update -y
+RUN dnf install openldap-clients -y
+
+# Copy Mercy certificates
+ADD certificates/root/* /etc/pki/ca-trust/source/anchors/
+RUN update-ca-trust
+
+ADD application/requirements.txt .
+RUN pip install -r requirements.txt
+
+USER root
+RUN mkdir -p /app
+COPY application/ /app
+
+WORKDIR /app
+
+CMD ["flask", "run", "--host=0.0.0.0", "--port=8000"]
+EXPOSE 8000

@@ -1,0 +1,29 @@
+.navbar .navbar-nav > li > a {
+    color: white; /*Change active text color here*/
+}
+
+.navbar-custom {
+    color: #FFFFFF;
+}
+
+a {color: rgb(236, 113, 18);}
+a:hover {color: rgb(37, 49, 159);}
+
+.navbar-brand {
+    /* color: #ffc107; */
+    color: black;
+    font-size: 25px;
+    pointer-events: none;
+}
+
+.view-table > th {
+    border-right-width:0px;
+    border-left-width:0px;
+    border-collapse: separate !important;
+    border-bottom: 2px solid black;
+}
+
+.custom-container {
+    width: 70%;
+    margin: auto;
+}
