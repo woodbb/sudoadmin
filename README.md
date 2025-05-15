@@ -40,7 +40,7 @@ LDAPGROUPFILTER
 
 LDAPGROUPNAME
 
-
+If you use AD, you will need to extend the schema with file in the "schemas" directory.  This was not created by me - we extended our AD schema with this file.
 
 To use with SSSD, an example sssd.conf is provided.  You will also need to add "sss" to the sudoers line (before files).
 
