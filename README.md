@@ -9,7 +9,12 @@ First clone the repository:
 
 git clone https://github.com/woodbb/sudoadmin
 
-Then you can run podman-start.sh or docker-start.sh, depending on your runtime engine of choice.  You will be prompted for a password, this will be the password you log into the web interface with.  Once the images start, head to http://localhost:8000 and login as admin/<your chosen password>
+Then you can run podman-start.sh or docker-start.sh, depending on your runtime engine of choice.  You will be prompted for a password, this will be the password you log into the web interface with.  Once the images start, head to http://localhost:8000 and login as 
+
+Username: admin
+
+Password: whatever you entered when the image was started
+
 
 You can also run this on kubernetes (we do), with a PV created for your flask_sessions (so you can scale the number of pods running the web application out past 1).  You will need to pass in the following environmental variables in your deployment:
 
