@@ -14,16 +14,27 @@ Then you can run podman-start.sh or docker-start.sh, depending on your runtime e
 You can also run this on kubernetes (we do), with a PV created for your flask_sessions (so you can scale the number of pods running the web application out past 1).  You will need to pass in the following environmental variables in your deployment:
 
 LDAPURI
+
 LDAPUSERDN
+
 LDAPPASSWORD
+
 LDAPBASEDN
+
 LDAPSUDOBASE
+
 LDAPPORT
+
 LDAPDOMAIN
+
 LDAPRDN
+
 LDAPAUTH
+
 LDAPGROUPFILTER
+
 LDAPGROUPNAME
+
 
 
 To use with SSSD, an example sssd.conf is provided.  You will also need to add "sss" to the sudoers line (before files).
