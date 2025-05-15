@@ -34,8 +34,6 @@ LDAPDOMAIN
 
 LDAPRDN
 
-LDAPAUTH
-
 LDAPGROUPFILTER
 
 * note: the startup scripts (podman-start.sh and docker-start.sh) will mount the app directory inside the container to the local applications directory (for local development).  You can skip this mount if you don't need this.
