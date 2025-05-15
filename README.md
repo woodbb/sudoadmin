@@ -9,7 +9,7 @@ First clone the repository:
 
 git clone https://github.com/woodbb/sudoadmin
 
-Then you can run podman-start.sh or docker-start.sh, depending on your runtime engine of choice.  You will be prompted for a password, this will be the password you log into the web interface with.  Once the images start, head to http://localhost:8000 and login as 
+Then you can run podman-start.sh or docker-start.sh, depending on your runtime engine of choice.  You can take the defaults, but you will be prompted for a password - this will be the password you log into the web interface with.  Once the images start, head to http://localhost:8000 and login as 
 
 Username: admin
 
