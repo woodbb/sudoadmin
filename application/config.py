@@ -33,15 +33,15 @@ if 'LDAPPORT' in os.environ:
 if 'LDAPRDN' in os.environ:
     ldap_rdn = os.environ.get('LDAPRDN')
 else:
-    ldap_rdn = 'sAMAccountName'
+    ldap_rdn = 'cn'
 
 if 'LDAPAUTH' in os.environ:
     ldap_auth = os.environ.get('LDAPAUTH').lower()
 else:
     ldap_auth = 'other'
 
-if 'DOMAIN' in os.environ:
-    domain = os.environ.get('DOMAIN').lower()
+if 'LDAPDOMAIN' in os.environ:
+    domain = os.environ.get('LDAPDOMAIN').lower()
 else:
     domain = ldap_base.replace('dc=','').replace(',','.')
 
@@ -53,3 +53,8 @@ if ldap_auth == 'ad' or ldap_auth == 'activedirectory' or ldap_auth == 'active d
     ldap_is_ad = True
 else:
     ldap_is_ad = False
+
+if 'LDAPGROUPMEMBERATTR' in os.environ:
+    group_member_attr = os.environ.get('LDAPGROUPMEMBERATTR').lower()
+else:
+    group_member_attr = 'member'

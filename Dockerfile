@@ -13,11 +13,6 @@ RUN apt-get install python3-pip libsasl2-dev python-dev-is-python3 libldap2-dev 
 RUN apt-get upgrade -y
 ENV PYTHONUNBUFFERED=1
 
-
-# Copy Mercy certificates
-ADD certificates/root/* /usr/local/share/ca-certificates/
-RUN update-ca-certificates
-
 RUN pip install git+https://github.com/jcrist/msgspec.git@main
 ADD application/requirements.txt .
 RUN pip install -r requirements.txt
