@@ -33,6 +33,8 @@ LDAPPORT: Port number the ldap server is listening on.
 
 LDAPGROUPFILTER: (optional) Set to the name of the group of the group the user must be a member of in order to be allowed access to the web interface.
 
+REPLICATION_WAIT_TIME:  (optional, defaults to 0 seconds) If you ldap replication ring takes more than 0 seconds, you can set the time to wait before reloading the page.   This was added because we have a load balancer in front of our LDAP servers and sometimes edits were not reflected on a ldap edit, then read (when another server was talked to).
+
 If using Active Directory:
 
 LDAPAUTH:  (optional) Set to the string "ad" if using Active Directory.  User's loggin in will have @$LDAPDOMAIN appended to the username entered on the login form.  If not passed in, the 

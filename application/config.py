@@ -58,3 +58,8 @@ if 'LDAPGROUPMEMBERATTR' in os.environ:
     group_member_attr = os.environ.get('LDAPGROUPMEMBERATTR').lower()
 else:
     group_member_attr = 'member'
+
+if 'REPLICATION_WAIT_TIME' is os.environ:
+    wait_time = os.environ.get('REPLICATION_WAIT_TIME').lower()
+else:
+    wait_time = 0

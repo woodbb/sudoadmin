@@ -16,6 +16,9 @@ ldapuri=$ldapprotocol$ldapserver:$ldapport
 ldaprdn=cn
 # ldapauth=ad
 domain=example.com
+# how many seconds to wait for replication to occur, 0 or unset to not wait.
+# wait_time=15
+wait_time=0
 
 echo "The application image that will be used is: $app_image"
 echo "The ldap host that will be used is: $ldapserver"
@@ -98,6 +101,7 @@ podman run -dt --rm --name sudoadmin \
 --env LDAPUSERDN=$ldapuserdn \
 --env LDAPRDN=$ldaprdn \
 --env LDAPDOMAIN=$domain \
+--env REPLICATION_WAIT_TIME=$wait_time \
 --env FLASK_APP=app \
 -v $PWD/application:/app/ \
 --env FLASK_ENV=development \

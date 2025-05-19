@@ -142,10 +142,10 @@ def policyinfo_add():
 			l.add_s(dn,ldif)
 			# return redirect(f"/policyinfo/{dnpre}")
 			redirect_url = '/policyinfo/' + dnpre
-			return render_template('loading.html', redirect_url=redirect_url)
+			return render_template('loading.html', redirect_url=redirect_url, wait_time=wait_time)
 		except Exception as e:
 			redirect_url = 'error&error=' + str(e)
-			return render_template("error.html", redirect_url=redirect_url)
+			return render_template("error.html", redirect_url=redirect_url, wait_time=wait_time)
 	return render_template('add.html', form=form, editform=editform)
 
 
@@ -221,7 +221,7 @@ def policyinfo_do_edit(cn):
 			l.modify_s(dn, mod)
 			# return redirect(f"/policyinfo/{cn}")
 			redirect_url = '/policyinfo/' + cn
-			return render_template('loading.html', redirect_url=redirect_url)
+			return render_template('loading.html', redirect_url=redirect_url, wait_time=wait_time)
 		except:
 			return redirect("/error", code=404)
 
@@ -234,7 +234,7 @@ def delete(cn):
 	dn = result[0][0][0]
 	l.delete_s(dn)
 	#return redirect("/")
-	return render_template('loading.html', redirect_url='/')
+	return render_template('loading.html', redirect_url='/', wait_time=wait_time)
 
 
 @app.errorhandler(404)
