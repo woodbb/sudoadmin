@@ -49,10 +49,14 @@ def logout():
 @app.route('/', methods=['GET', 'POST'])
 @login_required
 def index():
-	form, alldata, filterhost, filter, filtered = views.list_view()
-	return render_template('list.html', form=form,
-	       					data=alldata, filterhost=filterhost,
-							filter=filter,filtered=filtered, request=request)
+	try:
+		form, alldata, filterhost, filter, filtered = views.list_view()
+		return render_template('list.html', form=form,
+								data=alldata, filterhost=filterhost,
+								filter=filter,filtered=filtered, request=request)
+	except:
+		return render_template('error.html', request=request)
+	
 	#form,data = views.list_view()
 	#return render_template("debug.html", data=data,form=form)
 

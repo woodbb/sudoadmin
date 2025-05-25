@@ -57,7 +57,9 @@
             </li>
           </ul>
           <form class="d-flex" role="search" method="POST" action="/" >
-            {{ form.hidden_tag() }}
+            {% if form is defined %}
+              {{ form.hidden_tag() }}
+            {% endif %}
             <input class="form-control me-2" type="search" placeholder="Host Filter" aria-label="Search" name="filterhost">
             <button class="btn btn-warning" type="submit" name="submit" value="submit">Filter</button>
           </form>

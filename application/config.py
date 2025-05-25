@@ -47,7 +47,10 @@ else:
 
 retrieveAttributes = None
 searchScope = ldap.SCOPE_SUBTREE
-ldap.set_option(ldap.OPT_X_TLS_REQUIRE_CERT, ldap.OPT_X_TLS_NEVER)
+
+if 'LDAP_DISABLE_SSL' in os.environ:
+    if bool(os.environ.get('LDAP_DISABLE_SSL')):
+        ldap.set_option(ldap.OPT_X_TLS_REQUIRE_CERT, ldap.OPT_X_TLS_NEVER)
 
 if ldap_auth == 'ad' or ldap_auth == 'activedirectory' or ldap_auth == 'active directory':
     ldap_is_ad = True

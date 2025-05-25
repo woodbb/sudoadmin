@@ -20,6 +20,8 @@ domain=example.com
 # wait_time=15
 wait_time=0
 
+LDAP_DISABLE_SSL=true
+
 echo "The application image that will be used is: $app_image"
 echo "The ldap host that will be used is: $ldapserver"
 echo "The ldap port that will be used is: $ldapport"
@@ -102,6 +104,7 @@ podman run -dt --rm --name sudoadmin \
 --env LDAPRDN=$ldaprdn \
 --env LDAPDOMAIN=$domain \
 --env REPLICATION_WAIT_TIME=$wait_time \
+--env LDAP_DISABLE_SSL=$LDAP_DISABLE_SSL \
 --env FLASK_APP=app \
 -v $PWD/application:/app/ \
 --env FLASK_ENV=development \

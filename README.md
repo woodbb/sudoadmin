@@ -15,6 +15,8 @@ Username: admin
 
 Password: whatever you entered when the image was started
 
+You might need to wait a few minutes for the LDAP server to initialize, if you get an error - wait a minute and reload the webserver.
+
 You can also run this on kubernetes (we do), with a PV created for your flask_sessions (so you can scale the number of pods running the web application out past 1).  
 
 You will need to pass in the following environmental variables to the running container or pod:
@@ -34,6 +36,8 @@ LDAPPORT: Port number the ldap server is listening on.
 LDAPGROUPFILTER: (optional) Set to the name of the group of the group the user must be a member of in order to be allowed access to the web interface.
 
 REPLICATION_WAIT_TIME:  (optional, defaults to 0 seconds) If you ldap replication ring takes more than 0 seconds, you can set the time to wait before reloading the page.   This was added because we have a load balancer in front of our LDAP servers and sometimes edits were not reflected on a ldap edit, then read (when another server was talked to).
+
+LDAP_DISABLE_SSL: (optional, defaults to false) Disable SSL Cert checking.  To be used if the certificate the LDAP server is using is not trusted.
 
 If using Active Directory:
 
