@@ -76,16 +76,19 @@ do
 done
 echo
 
-docker run -dt --rm --name ldapserver \
-  --env LDAP_PORT_NUMBER=1389 \
-  --platform linux/amd64 \
-  --env LDAP_ROOT="$ldapou" \
-  --env LDAP_ADMIN_USERNAME=$ldapuser \
-  --env LDAP_ADMIN_PASSWORD=$ldappassword\
+docker run  -dt --rm --name ldapserver --hostname ldapserver \
+  -e LDAP_ORGANISATION="Example Org" \
+  -e LDAP_DOMAIN="$domain" \
+  -e LDAP_BASE_DN="$ldapou" \
+  -e LDAP_ADMIN_PASSWORD="$ldappassword" \
+  -e LDAP_SEED_INTERNAL_LDIF_PATH="/ldifs" \
+  -e LDAP_SEED_INTERNAL_SCHEMA_PATH="/schemas" \
+  -e LDAP_RFC2307BIS_SCHEMA="true" \
+  -e LDAP_REMOVE_CONFIG_AFTER_SETUP="false" \
   -v $PWD/schemas:/schemas \
   -v $PWD/ldifs:/ldifs \
-  -p 1389:1389 \
-  bitnami/openldap:latest
+  -p $ldapport:389 \
+   osixia/openldap
 
 docker run -dt --rm --name sudoadmin \
 --env LDAPSERVER=$ldapserver \
