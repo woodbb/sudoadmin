@@ -27,3 +27,28 @@ a:hover {color: rgb(37, 49, 159);}
     width: 70%;
     margin: auto;
 }
+
+/* Dark mode overrides for elements not covered by Bootstrap's data-bs-theme */
+[data-bs-theme="dark"] body {
+    background-color: var(--bs-body-bg);
+    color: var(--bs-body-color);
+}
+
+[data-bs-theme="dark"] a {
+    color: rgb(255, 149, 66);
+}
+[data-bs-theme="dark"] a:hover {
+    color: rgb(140, 155, 255);
+}
+
+[data-bs-theme="dark"] font[color="green"] {
+    color: #4caf50 !important;
+}
+
+[data-bs-theme="dark"] .view-table > th {
+    border-bottom-color: #666;
+}
+
+[data-bs-theme="dark"] .navbar-brand {
+    color: #000;
+}

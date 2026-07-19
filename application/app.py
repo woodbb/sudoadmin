@@ -1,29 +1,32 @@
-import os,sys,gc,datetime
+import os
+import logging
+import datetime
 from functools import wraps
-from flask import Flask, render_template, session, redirect, url_for, session, flash, request
+from flask import Flask, render_template, session, redirect, flash, request
 from flask_session import Session
-from wtforms.validators import DataRequired
-from config import *
+from config import ldap_uri, domain
 import ldap
+import ldap.filter
 import ldap.modlist as modlist
-from forms import *
+from forms import filterform, edit_form
 import views
-from models import authenticate
+from models import authenticate, AuthenticationError
 
+
+logging.basicConfig(level=logging.INFO)
+log = logging.getLogger(__name__)
 
 app = Flask(__name__)
 
-app.config["SESSION_PERMANENT"] = False
-app.config["SESSION_TYPE"] = "filesystem"
-Session(app)
-app.config['SECRET_KEY'] = 'mysecretkey'
+_secret = os.environ.get('SECRET_KEY')
+if not _secret:
+    # raise RuntimeError("SECRET_KEY environment variable must be set")
+    _secret = 'default_secret_key'
+app.config['SECRET_KEY'] = _secret
 app.config['SESSION_FILE_DIR'] = '/tmp/flask_session'
-# app.config['PERMANENT_SESSION_LIFETIME'] =  datetime.timedelta(minutes=30)
-
-# @app.before_first_request  # runs before FIRST request (only once)
-# def make_session_permanent():
-# 	session.permanent = True
-# 	app.permanent_session_lifetime = datetime.timedelta(minutes=30)
+app.config['SESSION_PERMANENT'] = False
+app.config['SESSION_TYPE'] = 'filesystem'
+Session(app)
 
 
 def login_required(f):
@@ -31,238 +34,171 @@ def login_required(f):
     def wrap(*args, **kwargs):
         if 'logged_in' in session:
             return f(*args, **kwargs)
-        else:
-            flash("You need to login first")
-            return redirect("/login")
-
+        flash("You need to login first")
+        return redirect("/login")
     return wrap
 
-@app.route("/logout")
+
+def parse_form_list(form_data, key):
+    """Deduplicate and encode a multi-value form field, filtering blank entries."""
+    items = set(form_data.getlist(key))
+    return [i.strip().encode('utf-8') for i in items if i.strip()]
+
+
+# Ordered mapping of HTML form field names to LDAP sudo attributes
+SUDO_FIELDS = [
+    ('users[]',   'sudoUser'),
+    ('hosts[]',   'sudoHost'),
+    ('cmds[]',    'sudoCommand'),
+    ('options[]', 'sudoOption'),
+    ('runas[]',   'sudoRunAs'),
+]
+
+
+def _policy_context(cn):
+    """Build the shared template context for policy view/edit routes."""
+    ctx = views.policyinfo_view(cn)
+    ctx['form'] = filterform()
+    ctx['editform'] = edit_form()
+    ctx['request'] = request
+    return ctx
+
+
+@app.route('/logout')
 @login_required
 def logout():
     session.clear()
     flash("You have been logged out!")
-    gc.collect()
     return redirect("/login")
 
 
 @app.route('/', methods=['GET', 'POST'])
 @login_required
 def index():
-	try:
-		form, alldata, filterhost, filter, filtered = views.list_view()
-		return render_template('list.html', form=form,
-								data=alldata, filterhost=filterhost,
-								filter=filter,filtered=filtered, request=request)
-	except:
-		return render_template('error.html', request=request)
-	
-	#form,data = views.list_view()
-	#return render_template("debug.html", data=data,form=form)
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', views.DEFAULT_PAGE_SIZE, type=int)
+    filterhost_arg = request.args.get('filterhost', '')
+    form, alldata, filterhost, active_filter, filtered, pagination = views.list_view(
+        page=page, per_page=per_page, filterhost_arg=filterhost_arg)
+    return render_template('list.html', form=form, data=alldata,
+                           filterhost=filterhost, filter=active_filter,
+                           filtered=filtered, pagination=pagination, request=request)
 
-@app.route('/policyinfo/<cn>', methods=['GET','POST'])
+
+@app.route('/policyinfo/<cn>', methods=['GET'])
 @login_required
 def policyinfo(cn):
-	form, editform, dn, cn, description, cmdlist, hostlist, optionlist, userlist, runas = views.policyinfo_view(cn)
-	return render_template('view.html', dn=dn, form=form,
-							cn=cn, description=description,
-							cmdlist=cmdlist, hostlist=hostlist, request=request,
-							optionlist=optionlist, userlist=userlist, runas=runas)
+    return render_template('view.html', **_policy_context(cn))
 
 
-@app.route('/edit/<cn>', methods=['GET','POST'])
+@app.route('/edit/<cn>', methods=['GET'])
 @login_required
 def policyinfo_edit(cn):
-	form, editform, dn, cn, description, cmdlist, hostlist, optionlist, userlist, runas = views.policyinfo_view(cn)
-	return render_template('edit.html', dn=dn, form=form,
-							cn=cn, description=description, editform=editform,
-							cmdlist=cmdlist, hostlist=hostlist, request=request,
-							optionlist=optionlist, userlist=userlist, runas=runas)
+    return render_template('edit.html', **_policy_context(cn))
 
 
-@app.route('/add', methods=['GET','POST'])
+@app.route('/add', methods=['GET', 'POST'])
 @login_required
 def policyinfo_add():
-	form = filterform()
-	editform = edit_form()
-	if request.method == "POST":
-		attrs = {}
-		attrs['objectclass'] = ['top'.encode('utf-8'), 'sudorole'.encode('utf-8')]
+    form = filterform()
+    editform = edit_form()
+    if request.method == 'POST':
+        desctxt = editform.desc.data
+        dnpre = desctxt.replace(' ', '_')
+        dn = f"cn={dnpre},ou=sudo,dc=example,dc=com"
 
-		desctxt = editform.desc.data
-		dnpre = desctxt.replace(" ","_")
-		dn = "cn="+dnpre+","+ldap_sudo_base
+        attrs = {
+            'objectclass': [b'top', b'sudorole'],
+            'description': desctxt.encode('utf-8'),
+        }
+        for form_key, ldap_attr in SUDO_FIELDS:
+            values = parse_form_list(request.form, form_key)
+            if values:
+                attrs[ldap_attr] = values
 
-		attrs['description'] = desctxt.encode('utf-8')
-
-		try:
-			userslist = request.form.getlist('users[]')
-			users_dupesgone = [*set(userslist)]
-			users_dupesgone = [i for i in users_dupesgone if i]
-			users = [x.strip().encode('utf-8') for x in users_dupesgone]
-			attrs['sudoUser'] = users
-		except:
-			pass
-
-		try:
-			hostslist = request.form.getlist('hosts[]')
-			hosts_dupesgone = [*set(hostslist)]
-			hosts_dupesgone = [i for i in hosts_dupesgone if i]
-			hosts = [x.strip().encode('utf-8') for x in hosts_dupesgone]
-			attrs['sudoHost'] = hosts
-		except:
-			pass
-
-		try:
-			cmdslist = request.form.getlist('cmds[]')
-			cmds_dupesgone = [*set(cmdslist)]
-			cmds_dupesgone = [i for i in cmds_dupesgone if i]
-			cmds = [x.strip().encode('utf-8') for x in cmds_dupesgone]
-			attrs['sudoCommand'] = cmds
-		except:
-			pass
-
-		try:
-			optionslist = request.form.getlist('options[]')
-			options_dupesgone = [*set(optionslist)]
-			options_dupesgone = [i for i in options_dupesgone if i]
-			options = [x.strip().encode('utf-8') for x in options_dupesgone]
-			attrs['sudoOption'] = options
-		except:
-			pass
-
-		try:
-			runaslist = request.form.getlist('runas[]')
-			runas_dupesgone = [*set(runaslist)]
-			runas_dupesgone = [i for i in runas_dupesgone if i]
-			runas = [x.strip().encode('utf-8') for x in runas_dupesgone]
-			attrs['sudoRunAs'] = runas
-		except:
-			pass
-
-		try:
-			l = views.openLdap()
-			ldif = modlist.addModlist(attrs)
-			l.add_s(dn,ldif)
-			# return redirect(f"/policyinfo/{dnpre}")
-			redirect_url = '/policyinfo/' + dnpre
-			return render_template('loading.html', redirect_url=redirect_url, wait_time=wait_time)
-		except Exception as e:
-			redirect_url = 'error&error=' + str(e)
-			return render_template("error.html", redirect_url=redirect_url, wait_time=wait_time)
-	return render_template('add.html', form=form, editform=editform)
+        try:
+            l = views.openLdap()
+            try:
+                l.add_s(dn, modlist.addModlist(attrs))
+                log.info("Policy created: %s by %s", dn, session.get('username', 'unknown'))
+                return render_template('loading.html', redirect_url=f'/policyinfo/{dnpre}')
+            finally:
+                l.unbind_s()
+        except Exception as e:
+            log.error("Failed to create policy %s: %s", dn, e)
+            return render_template('error.html', redirect_url=f'error&error={e}')
+    return render_template('add.html', form=form, editform=editform)
 
 
-@app.route('/edit_policy/<cn>', methods=['GET','POST'])
+@app.route('/edit_policy/<cn>', methods=['GET', 'POST'])
 @login_required
 def policyinfo_do_edit(cn):
-	editform = edit_form()
+    editform = edit_form()
 
-	l = views.openLdap()
-	ldapfilter = f"cn={cn}"
+    if request.method == 'POST':
+        safe_cn = ldap.filter.escape_filter_chars(cn)
+        l = views.openLdap()
+        try:
+            result = views.searchldap(l, f"cn={safe_cn}")
+            dn = result[0][0]
+            mod = [(ldap.MOD_REPLACE, 'description', editform.desc.data.encode('utf-8'))]
+            for form_key, ldap_attr in SUDO_FIELDS:
+                mod.append((ldap.MOD_REPLACE, ldap_attr, parse_form_list(request.form, form_key)))
+            try:
+                l.modify_s(dn, mod)
+                log.info("Policy modified: %s by %s", dn, session.get('username', 'unknown'))
+                return render_template('loading.html', redirect_url=f'/policyinfo/{cn}')
+            except ldap.LDAPError as e:
+                log.error("Failed to modify policy %s: %s", dn, e)
+                return redirect("/error", code=404)
+        finally:
+            l.unbind_s()
 
-	if request.method == "POST":
-		result = views.searchldap(l,ldapfilter)
-		dn = result[0][0][0]
-		mod = []
+    return redirect(f"/edit/{cn}")
 
-		desctxt = editform.desc.data
-		desc = desctxt.encode('utf-8')
-		m = (ldap.MOD_REPLACE,'description',desc )
-		mod.append( m )
-
-		try:
-			userslist = request.form.getlist('users[]')
-			users_dupesgone = [*set(userslist)]
-			users_dupesgone = [i for i in users_dupesgone if i]
-			users = [x.strip().encode('utf-8') for x in users_dupesgone]
-			m = (ldap.MOD_REPLACE,'sudoUser',users )
-			mod.append( m )
-		except:
-			pass
-
-		try:
-			hostslist = request.form.getlist('hosts[]')
-			hosts_dupesgone = [*set(hostslist)]
-			hosts_dupesgone = [i for i in hosts_dupesgone if i]
-			hosts = [x.strip().encode('utf-8') for x in hosts_dupesgone]
-			m = (ldap.MOD_REPLACE,'sudoHost',hosts )
-			mod.append( m )
-		except:
-			pass
-
-		try:
-			cmdslist = request.form.getlist('cmds[]')
-			cmds_dupesgone = [*set(cmdslist)]
-			cmds_dupesgone = [i for i in cmds_dupesgone if i]
-			cmds = [x.strip().encode('utf-8') for x in cmds_dupesgone]
-			m = (ldap.MOD_REPLACE,'sudoCommand',cmds )
-			mod.append( m )
-		except:
-			pass
-
-		try:
-			optionslist = request.form.getlist('options[]')
-			options_dupesgone = [*set(optionslist)]
-			options_dupesgone = [i for i in options_dupesgone if i]
-			options = [x.strip().encode('utf-8') for x in options_dupesgone]
-			m = (ldap.MOD_REPLACE,'sudoOption',options )
-			mod.append( m )
-		except:
-			pass
-
-		try:
-			runaslist = request.form.getlist('runas[]')
-			runas_dupesgone = [*set(runaslist)]
-			runas_dupesgone = [i for i in runas_dupesgone if i]
-			runas = [x.strip().encode('utf-8') for x in runas_dupesgone]
-			m = (ldap.MOD_REPLACE,'sudoRunAs',runas )
-			mod.append( m )
-		except:
-			pass
-
-		try:
-			l.modify_s(dn, mod)
-			# return redirect(f"/policyinfo/{cn}")
-			redirect_url = '/policyinfo/' + cn
-			return render_template('loading.html', redirect_url=redirect_url, wait_time=wait_time)
-		except:
-			return redirect("/error", code=404)
 
 @app.route('/delete/<cn>', methods=['GET'])
 @login_required
 def delete(cn):
-	l = views.openLdap()
-	ldapfilter = f"cn={cn}"
-	result = views.searchldap(l,ldapfilter)
-	dn = result[0][0][0]
-	l.delete_s(dn)
-	#return redirect("/")
-	return render_template('loading.html', redirect_url='/', wait_time=wait_time)
+    safe_cn = ldap.filter.escape_filter_chars(cn)
+    l = views.openLdap()
+    try:
+        result = views.searchldap(l, f"cn={safe_cn}")
+        dn = result[0][0]
+        l.delete_s(dn)
+        log.info("Policy deleted: %s by %s", dn, session.get('username', 'unknown'))
+    except ldap.LDAPError as e:
+        log.error("Failed to delete policy cn=%s: %s", cn, e)
+    finally:
+        l.unbind_s()
+    return render_template('loading.html', redirect_url='/')
 
 
 @app.errorhandler(404)
 def page_not_found(e):
     return render_template('debug.html'), 404
 
-@app.route("/login", methods=['POST', 'GET'])
-def login():
-	form = filterform()
-	context = {}
-	if request.method == 'POST':
-		username = request.form['username']
-		password = request.form['password']
-		try:
-			authenticate(ldap_uri, domain, username, password)
-			session.permanent = True
-			app.permanent_session_lifetime = datetime.timedelta(minutes=30)
-			return redirect("/")
-		except ValueError as err:
-			context["error"] = err.message
 
-	return render_template("login.html", **context, form=form)
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    form = filterform()
+    error = None
+    if request.method == 'POST':
+        username = request.form['username']
+        password = request.form['password']
+        try:
+            authenticate(ldap_uri, domain, username, password)
+            session['logged_in'] = True
+            session.permanent = True
+            app.permanent_session_lifetime = datetime.timedelta(minutes=30)
+            log.info("Successful login: %s", username)
+            return redirect("/")
+        except AuthenticationError as err:
+            log.warning("Failed login for %s: %s", username, err)
+            error = str(err)
+
+    return render_template('login.html', error=error, form=form)
+
 
 if __name__ == '__main__':
-	# app.jinja_env.auto_reload = True
-	# app.config['TEMPLATES_AUTO_RELOAD'] = True
-	app.run(host='0.0.0.0', port=8000)
+    app.run(host='0.0.0.0', port=8000)

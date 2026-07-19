@@ -3,7 +3,7 @@
 #
 
 # local development working environment
-app_image=woodb/sudoadmin:latest
+app_image=harbor.example.com/lsudo/sudoadmin:latest
 #app_image=woodnas.local:5005/sudoadmin:latest
 ldapserver=ldapserver
 ldapport=1389
@@ -16,11 +16,6 @@ ldapuri=$ldapprotocol$ldapserver:$ldapport
 ldaprdn=cn
 # ldapauth=ad
 domain=example.com
-# how many seconds to wait for replication to occur, 0 or unset to not wait.
-# wait_time=15
-wait_time=0
-
-LDAP_DISABLE_SSL=true
 
 echo "The application image that will be used is: $app_image"
 echo "The ldap host that will be used is: $ldapserver"
@@ -81,14 +76,15 @@ podman pod create --name sudopod -p 1389:1389 -p 8000:8000
 
 podman run -dt --rm --name ldapserver \
   --pod sudopod \
-  --env LDAP_PORT_NUMBER=1389 \
+  --env LDAP_PORT_NUMBER=$ldapport \
   --platform linux/amd64 \
   --env LDAP_ROOT="$ldapou" \
   --env LDAP_ADMIN_USERNAME=$ldapuser \
   --env LDAP_ADMIN_PASSWORD=$ldappassword\
   -v $PWD/schemas:/schemas \
   -v $PWD/ldifs:/ldifs \
-  bitnami/openldap:latest
+  cleanstart/openldap
+  # bitnami/openldap:latest
 
 podman run -dt --rm --name sudoadmin \
 --pod sudopod \
@@ -103,8 +99,6 @@ podman run -dt --rm --name sudoadmin \
 --env LDAPUSERDN=$ldapuserdn \
 --env LDAPRDN=$ldaprdn \
 --env LDAPDOMAIN=$domain \
---env REPLICATION_WAIT_TIME=$wait_time \
---env LDAP_DISABLE_SSL=$LDAP_DISABLE_SSL \
 --env FLASK_APP=app \
 -v $PWD/application:/app/ \
 --env FLASK_ENV=development \

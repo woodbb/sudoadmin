@@ -1,0 +1,12 @@
+podman login harbor.example.com
+podman login registry.redhat.io
+
+# on-prem
+podman build --file Dockerfile --tag harbor.example.com/lsudo/sudoadmin:latest --build-arg https_proxy=http://10.0.0.250:80 --build-arg http_proxy=http://10.0.0.250:80
+podman push --tls-verify=false harbor.example.com/lsudo/sudoadmin:latest
+
+# my laptop/home network
+podman build --file Dockerfile --tag woodnas.local:5005/sudoadmin:latest
+podman push --tls-verify=false woodnas.local:5005/sudoadmin
+
+# this is a comment

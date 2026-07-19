@@ -1,10 +1,10 @@
 
 # example.com
-dn: dc=example,dc=com
-objectClass: dcObject
-objectClass: organization
-dc: example
-o: example
+# dn: dc=example,dc=com
+# objectClass: dcObject
+# objectClass: organization
+# dc: example
+# o: example
 
 # users, example.com
 dn: ou=users,dc=example,dc=com
@@ -114,7 +114,7 @@ dn: cn=Automation_Team,ou=sudo,dc=example,dc=com
 description: Automation Team
 objectClass: sudoRole
 objectClass: top
-cn: Automation_Teal
+cn: Automation_Team
 sudoCommand: ALL
 sudoHost: host11
 sudoHost: host3

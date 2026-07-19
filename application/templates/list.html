@@ -18,7 +18,12 @@
 </center>
 <br>
 {% endif %}
-<table class="table table-borderless table-striped table-hover">
+
+<div class="mb-3">
+  <input type="search" id="policySearchBox" class="form-control" placeholder="Search policies on this page..." aria-label="Search policies">
+</div>
+
+<table class="table table-borderless table-striped table-hover" id="policyTable">
     <thead>
       <tr>    
         <th scope="col">Sudo Policy Objects</th>
@@ -53,8 +58,68 @@
 
     </tbody>
   </table>
+  <p id="policyNoResults" class="text-muted" style="display:none;">No policies match your search.</p>
 
+<div class="d-flex justify-content-between align-items-center">
+  <div>
+    <form method="get" action="/" class="d-flex align-items-center">
+      {% if filterhost %}
+      <input type="hidden" name="filterhost" value="{{ filterhost }}">
+      {% endif %}
+      <label for="per_page" class="me-2 mb-0">Results per page:</label>
+      <select name="per_page" id="per_page" class="form-select form-select-sm w-auto" onchange="this.form.submit()">
+        {% for size in pagination.page_size_choices %}
+        <option value="{{ size }}" {% if pagination.per_page == size %}selected{% endif %}>{{ size }}</option>
+        {% endfor %}
+      </select>
+    </form>
+  </div>
+
+  <div>
+    <span class="text-muted">
+      Showing page {{ pagination.page }} of {{ pagination.total_pages }} ({{ pagination.total_items }} total)
+    </span>
+  </div>
+
+  <nav aria-label="Sudo policy pagination">
+    <ul class="pagination pagination-sm mb-0">
+      <li class="page-item {% if not pagination.has_prev %}disabled{% endif %}">
+        <a class="page-link" href="/?page={{ pagination.page - 1 }}&per_page={{ pagination.per_page }}{% if filterhost %}&filterhost={{ filterhost }}{% endif %}">Previous</a>
+      </li>
+      <li class="page-item {% if not pagination.has_next %}disabled{% endif %}">
+        <a class="page-link" href="/?page={{ pagination.page + 1 }}&per_page={{ pagination.per_page }}{% if filterhost %}&filterhost={{ filterhost }}{% endif %}">Next</a>
+      </li>
+    </ul>
+  </nav>
+</div>
 
 {% endif %}
 
+{% endblock %}
+
+{% block scripts %}
+<script>
+  (function () {
+    var searchBox = document.getElementById('policySearchBox');
+    if (!searchBox) return;
+    var table = document.getElementById('policyTable');
+    var rows = table ? table.querySelectorAll('tbody tr') : [];
+    var noResults = document.getElementById('policyNoResults');
+
+    searchBox.addEventListener('input', function () {
+      var term = searchBox.value.trim().toLowerCase();
+      var visibleCount = 0;
+
+      rows.forEach(function (row) {
+        var matches = row.textContent.toLowerCase().indexOf(term) !== -1;
+        row.style.display = matches ? '' : 'none';
+        if (matches) visibleCount++;
+      });
+
+      if (noResults) {
+        noResults.style.display = (term && visibleCount === 0) ? '' : 'none';
+      }
+    });
+  })();
+</script>
 {% endblock %}

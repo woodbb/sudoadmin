@@ -1,27 +1,28 @@
-FROM python:latest
+# To build:
+# docker build --tag harbor.example.com/lsudo/sudoadmin:latest \
+#   --build-arg https_proxy=http://10.0.0.250:80 \
+#   --build-arg http_proxy=http://10.0.0.250:80 .
+
+FROM registry.access.redhat.com/ubi10/ubi
+
 ENV TZ=America/Chicago
-ENV DEBIAN_FRONTEND=noninteractive
-
-RUN apt autoremove
-RUN apt autoclean -y
-
-RUN apt-get update
-# RUN apt install software-properties-common -y
-# RUN apt-get install python3-pip libsasl2-dev python3-dev libldap2-dev libssl-dev libnss-ldap libpam-ldap -y
-RUN apt-get install python3-pip libsasl2-dev python-dev-is-python3 libldap2-dev libssl-dev libnss-ldap libpam-ldap -y
-
-RUN apt-get upgrade -y
 ENV PYTHONUNBUFFERED=1
+ENV FLASK_APP=app.py
 
-RUN pip install git+https://github.com/jcrist/msgspec.git@main
+RUN dnf clean all && \
+    dnf update -y && \
+    dnf install -y python3 python3-pip python3-devel openldap-clients openldap-devel gcc && \
+    dnf clean all
+
+# ADD certificates/root/* /etc/pki/ca-trust/source/anchors/
+# RUN update-ca-trust
+
 ADD application/requirements.txt .
-RUN pip install -r requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
 
-USER root
 RUN mkdir -p /app
 COPY application/ /app
 
 WORKDIR /app
-
-CMD ["flask", "run", "--host=0.0.0.0", "--port=8000"]
 EXPOSE 8000
+CMD ["flask", "run", "--host=0.0.0.0", "--port=8000"]

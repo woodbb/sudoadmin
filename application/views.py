@@ -1,184 +1,132 @@
-import os,sys
-from flask import Flask, render_template, session, redirect, url_for, session, flash
-from wtforms.validators import DataRequired
-from config import *
+import logging
 import ldap
-import ldap.modlist as modlist
-from forms import *
+import ldap.filter
+from config import ldap_uri, ldap_user, ldap_pass, ldap_sudo_base, retrieveAttributes, searchScope
+from forms import filterform
 
-def decodelist(list):
-	newlist = []
-	for item in list:
-		newlist.append(item.decode('utf8'))
-	return newlist
+log = logging.getLogger(__name__)
+
+
+def decodelist(items):
+    return [item.decode('utf8') for item in items]
+
+
+def decode_attr(attrs, key):
+    """Decode a bytes LDAP attribute to a list of strings, returning [] if absent."""
+    return decodelist(attrs[key]) if key in attrs else []
+
+
+def truncated_decode(raw_list, limit=2):
+    """Decode up to `limit` bytes entries, appending '...' if more exist."""
+    decoded = [item.decode('utf8') for item in raw_list[:limit]]
+    if len(raw_list) > limit:
+        decoded.append('...')
+    return decoded
+
 
 def openLdap():
-	try:
-		l = ldap.initialize(ldap_uri)
-		l.simple_bind_s(ldap_user,ldap_pass)
-	except ldap.LDAPError as e:
-		print(e)
-
-	return l
-
-def searchldap(l,ldapfilter):
-	ldap_result_id = l.search(ldap_sudo_base, searchScope, ldapfilter, retrieveAttributes)
-	result_set = []
-	while 1:
-		result_type, result_data = l.result(ldap_result_id, 0)
-		if (result_data == []):
-			break
-		else:
-			if result_type == ldap.RES_SEARCH_ENTRY:
-				result_set.append(result_data)
-	return result_set
-
-def list_view():
-	alldata = []
-	data = {}
-	filter = ''
-	filtered = False
-	filterhost = ''
-	form = filterform()
-
-	if form.validate_on_submit():
-		filterhost = form.filterhost.data
-		ldapfilter = "(&(objectclass=sudorole)(|(sudohost=ALL)(sudohost=*" + filterhost + "*)))"
-		filtered = True
-		filter = f'sudoHost={filterhost}'
-	else:
-		ldapfilter = "objectclass=sudorole"
-
-	l = openLdap()
-	result_set = searchldap(l,ldapfilter)
-	#return form,result_set
-	if len(result_set) > 0:
-		for x in result_set:
-			try:
-				data = {}
-				data["description"] = x[0][1]["description"][0].decode('utf8')
-				data["dn"] = x[0][0]
-				data["cn"] = x[0][1]["cn"][0].decode('utf8')
-
-				hostlist = []
-				hostcounter = 0
-				for host in x[0][1]["sudoHost"]:
-					if hostcounter < 2:
-						hostlist.append(host.decode('utf8'))
-					if hostcounter == 3:
-						hostlist.append('...')
-					hostcounter += 1
-				data["hosts"] = hostlist
-
-				userlist = []
-				usercounter = 0
-				for user in x[0][1]["sudoUser"]:
-					if usercounter < 2:
-						userlist.append(user.decode('utf8'))
-					if usercounter == 3:
-						userlist.append('...')
-					usercounter += 1
-				data["users"] = userlist
-
-				alldata.append(data)
-
-			except:
-				pass
+    l = ldap.initialize(ldap_uri)
+    try:
+        l.simple_bind_s(ldap_user, ldap_pass)
+    except ldap.LDAPError as e:
+        log.error("LDAP bind failed: %s", e)
+        raise
+    return l
 
 
-	sortedalldata = sorted(alldata, key=lambda d: d['description'])
+def searchldap(l, ldapfilter):
+    """Execute a synchronous LDAP search and return a list of (dn, attrs) tuples."""
+    results = l.search_s(ldap_sudo_base, searchScope, ldapfilter, retrieveAttributes)
+    return [(dn, attrs) for dn, attrs in results if dn is not None]
 
-	return (form, sortedalldata, filterhost, filter, filtered)
+
+PAGE_SIZE_CHOICES = (20, 50, 100)
+DEFAULT_PAGE_SIZE = PAGE_SIZE_CHOICES[0]
+
+
+def list_view(page=1, per_page=DEFAULT_PAGE_SIZE, filterhost_arg=''):
+    alldata = []
+    active_filter = ''
+    filtered = False
+    filterhost = ''
+    form = filterform()
+
+    if form.validate_on_submit() and form.filterhost.data and form.filterhost.data.strip():
+        filterhost = ldap.filter.escape_filter_chars(form.filterhost.data.strip())
+        ldapfilter = f"(&(objectclass=sudorole)(|(sudohost=ALL)(sudohost=*{filterhost}*)))"
+        filtered = True
+        active_filter = f'sudoHost={filterhost}'
+    elif filterhost_arg and filterhost_arg.strip():
+        filterhost = ldap.filter.escape_filter_chars(filterhost_arg.strip())
+        ldapfilter = f"(&(objectclass=sudorole)(|(sudohost=ALL)(sudohost=*{filterhost}*)))"
+        filtered = True
+        active_filter = f'sudoHost={filterhost}'
+    else:
+        ldapfilter = 'objectclass=sudorole'
+
+    l = openLdap()
+    try:
+        result_set = searchldap(l, ldapfilter)
+        for dn, attrs in result_set:
+            try:
+                alldata.append({
+                    'description': attrs['description'][0].decode('utf8'),
+                    'dn': dn,
+                    'cn': attrs['cn'][0].decode('utf8'),
+                    'hosts': truncated_decode(attrs.get('sudoHost', [])),
+                    'users': truncated_decode(attrs.get('sudoUser', [])),
+                })
+            except Exception as e:
+                log.warning("Skipping malformed LDAP entry %s: %s", dn, e)
+    finally:
+        l.unbind_s()
+
+    sortedalldata = sorted(alldata, key=lambda d: d['description'])
+
+    if per_page not in PAGE_SIZE_CHOICES:
+        per_page = DEFAULT_PAGE_SIZE
+
+    total_items = len(sortedalldata)
+    total_pages = max(1, (total_items + per_page - 1) // per_page)
+    page = max(1, min(page, total_pages))
+
+    start = (page - 1) * per_page
+    end = start + per_page
+    pagedata = sortedalldata[start:end]
+
+    pagination = {
+        'page': page,
+        'per_page': per_page,
+        'total_items': total_items,
+        'total_pages': total_pages,
+        'has_prev': page > 1,
+        'has_next': page < total_pages,
+        'page_size_choices': PAGE_SIZE_CHOICES,
+    }
+
+    return (form, pagedata, filterhost, active_filter, filtered, pagination)
+
 
 def policyinfo_view(cn):
-	form = filterform()
-	editform = edit_form()
-
-	l = openLdap()
-	ldapfilter = f"cn={cn}"
-
-	description = ''
-	dn = ''
-	cmdlist = []
-	hostlist = []
-	optionlist = []
-	userlist = []
-	runaslist = []
-	s = "sudoCommand"
-
-	result = searchldap(l,ldapfilter)
-	if len(result) > 0:
-		description = result[0][0][1]["description"][0].decode('utf-8')
-		dn = result[0][0][0]
-		#cn = result[0][1]["cn"][0].decode('utf8')
-
-		attrs = result[0][0][1]
-
-		if attrs.get('sudoCommand') != None:
-			cmdlist = decodelist(result[0][0][1]["sudoCommand"])
-		else:
-			cmdlist = []
-
-		if attrs.get('sudoHost') != None:
-			hostlist = decodelist(result[0][0][1]["sudoHost"])
-		else:
-			hostlist = []
-		
-		if attrs.get('sudoOption') != None:
-			optionlist = decodelist(result[0][0][1]["sudoOption"])
-		else:
-			optionlist = []
-
-		if attrs.get('sudoUser') != None:
-			userlist = decodelist(result[0][0][1]["sudoUser"])
-		else:
-			userlist = []
-	
-		if attrs.get('sudoRunAs') != None:
-			runaslist = decodelist(result[0][0][1]["sudoRunAs"])
-		else:
-			runaslist = []
-
-	return (form, editform, dn, cn, description, cmdlist, hostlist, optionlist, userlist, runaslist)
-
-def edit_policy(cn):
-	editform = edit_form()
-
-	l = openLdap()
-	ldapfilter = f"cn={cn}"
-
-	if editform.validate_on_submit():
-		result = searchldap(l,ldapfilter)
-		dn = result[0][0][0]
-		mod = []
-
-		userslist = editform.users.data
-		users = [*set(userslist)]
-		m = (ldap.MOD_REPLACE,'sudoUser',users )
-		mod.append( m )
-
-		hostslist = editform.hosts.data
-		hosts = [*set(hostslist)]
-		m = (ldap.MOD_REPLACE,'sudoHost',hosts )
-		mod.append( m )
-
-		cmdslist = editform.cmds.data
-		cmds = [*set(cmdslist)]
-		m = (ldap.MOD_REPLACE,'sudoCommand',cmds )
-		mod.append( m )
-
-		optionslist = editform.options.data
-		options = [*set(optionslist)]
-		m = (ldap.MOD_REPLACE,'sudoOption',options )
-		mod.append( m )
-
-		runaslist = editform.runas.data
-		runas = [*set(runaslist)]
-		m = (ldap.MOD_REPLACE,'sudoRunAs',runas )
-		mod.append( m )
-
-		try:
-			l.modify_s(dn, mod)
-			return redirect(f"/policyinfo/{cn}")
-		except:
-			return redirect("/error", code=404)
+    """Fetch a single sudo policy by cn. Returns a dict of policy attributes."""
+    safe_cn = ldap.filter.escape_filter_chars(cn)
+    l = openLdap()
+    try:
+        result = searchldap(l, f"cn={safe_cn}")
+        if not result:
+            return {'dn': '', 'cn': cn, 'description': '',
+                    'cmdlist': [], 'hostlist': [], 'optionlist': [],
+                    'userlist': [], 'runas': []}
+        dn, attrs = result[0]
+        return {
+            'dn':          dn,
+            'cn':          cn,
+            'description': attrs.get('description', [b''])[0].decode('utf-8'),
+            'cmdlist':     decode_attr(attrs, 'sudoCommand'),
+            'hostlist':    decode_attr(attrs, 'sudoHost'),
+            'optionlist':  decode_attr(attrs, 'sudoOption'),
+            'userlist':    decode_attr(attrs, 'sudoUser'),
+            'runas':       decode_attr(attrs, 'sudoRunAs'),
+        }
+    finally:
+        l.unbind_s()
