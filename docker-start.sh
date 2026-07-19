@@ -76,7 +76,12 @@ do
 done
 echo
 
+# Create a user network so container names resolve reliably
+network_name=sudopodnet
+docker network create "$network_name" 2>/dev/null || true
+
 docker run  -dt --rm --name ldapserver --hostname ldapserver \
+  --network "$network_name" \
   -e LDAP_ORGANISATION="Example Org" \
   -e LDAP_DOMAIN="$domain" \
   -e LDAP_BASE_DN="$ldapou" \
@@ -91,6 +96,7 @@ docker run  -dt --rm --name ldapserver --hostname ldapserver \
    osixia/openldap
 
 docker run -dt --rm --name sudoadmin \
+  --network "$network_name" \
 --env LDAPSERVER=$ldapserver \
 --env PORT=$ldapport \
 --env LDAPURI=$ldapuri \
@@ -106,6 +112,5 @@ docker run -dt --rm --name sudoadmin \
 --env FLASK_APP=app \
 -v $PWD/application:/app/ \
 --env FLASK_ENV=development \
---link ldapserver:ldapserver \
 -p 8000:8000 \
 $app_image
