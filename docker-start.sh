@@ -15,7 +15,7 @@ ldapou=dc=example,dc=com
 ldapsudoou=ou=sudo,dc=example,dc=com
 ldapuser=admin
 ldapuserdn="cn=admin,dc=example,dc=com"
-ldapuri=$ldapprotocol$ldapserver
+ldapuri=$ldapprotocol$ldapserver:$ldap_container_port
 ldaprdn=cn
 # ldapauth=ad
 domain=example.com
@@ -78,27 +78,31 @@ echo
 network_name=sudopodnet
 docker network create $network_name 2>/dev/null || true
 
-docker run -dt --rm --name ldapserver --hostname ldapserver \
+# Start ldapserver (do not --rm so logs remain if it crashes)
+docker run -dt --name ldapserver --hostname ldapserver \
   --network $network_name \
-  -e LDAP_ORGANISATION="Example Org" \
-  -e LDAP_DOMAIN="$domain" \
-  -e LDAP_BASE_DN="$ldapou" \
-  -e LDAP_ADMIN_PASSWORD="$ldappassword" \
-  -e LDAP_SEED_INTERNAL_LDIF_PATH="/ldifs" \
-  -e LDAP_SEED_INTERNAL_SCHEMA_PATH="/schemas" \
-  -e LDAP_RFC2307BIS_SCHEMA="true" \
-  -e LDAP_REMOVE_CONFIG_AFTER_SETUP="false" \
+  --env LDAP_PORT_NUMBER=$ldap_container_port \
+  --env LDAP_ROOT="$ldapou" \
+  --env LDAP_ADMIN_USERNAME=$ldapuser \
+  --env LDAP_ADMIN_PASSWORD=$ldappassword \
   -v $PWD/schemas:/schemas \
   -v $PWD/ldifs:/ldifs \
   -p $ldap_host_port:$ldap_container_port \
-  osixia/openldap
+  cleanstart/openldap
 
+# Wait briefly for ldapserver to appear running, else show logs and exit
+sleep 3
+if [ -z "$(docker ps --filter name=ldapserver --filter status=running -q)" ]; then
+  echo "ldapserver failed to start; showing recent logs:"
+  docker logs --tail 200 ldapserver || true
+  echo "Exiting. Fix ldapserver startup and re-run docker-start.sh"
+  exit 1
+fi
 
 
 docker run -dt --rm --name sudoadmin \
   --network $network_name \
   --env LDAPSERVER=$ldapserver \
-  --env LDAPPORT=$ldap_container_port \
   --env LDAPURI=$ldapuri \
   --env LDAPUSERNAME=$ldapuser \
   --env LDAPPASSWORD=$ldappassword \
