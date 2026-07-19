@@ -7,12 +7,15 @@ app_image=woodb/sudoadmin
 #app_image=woodnas.local:5005/sudoadmin:latest
 ldapserver=ldapserver
 ldapport=1389
+# LDAP inside-container listens on 389; host may map a different port (e.g. 1389)
+ldap_container_port=389
 ldapprotocol=ldap://
 ldapou=dc=example,dc=com
 ldapsudoou=ou=sudo,dc=example,dc=com
 ldapuser=admin
 ldapuserdn="cn=admin,dc=example,dc=com"
-ldapuri=$ldapprotocol$ldapserver:$ldapport
+# Use the container port for LDAPURI so containers connect to the correct port
+ldapuri=$ldapprotocol$ldapserver:$ldap_container_port
 ldaprdn=cn
 # ldapauth=ad
 domain=example.com
